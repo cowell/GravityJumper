@@ -38,7 +38,12 @@ public class Level {
         generateLevel();
     }
 
-    // Add getters for level dimensions
+    // This method returns the level number
+    public int getLevelNumber() {
+        return levelNumber;
+    }
+
+    // Getters for level dimensions
     public int getLevelWidth() {
         return levelWidth;
     }

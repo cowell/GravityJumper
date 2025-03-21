@@ -7,6 +7,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -50,6 +51,7 @@ public class GameView extends SurfaceView implements Runnable {
     private void init(Context context) {
         holder = getHolder();
         paint = new Paint();
+        paint.setAntiAlias(true);
     }
 
     @Override
@@ -57,11 +59,13 @@ public class GameView extends SurfaceView implements Runnable {
         super.onSizeChanged(w, h, oldw, oldh);
         screenWidth = w;
         screenHeight = h;
+        Log.d("GameView", "Screen size: " + w + "x" + h);
     }
 
     private void setupGame() {
-        if (!isSetup) {
+        if (!isSetup && screenWidth > 0 && screenHeight > 0) {
             player = new Player(getContext());
+            Log.d("GameView", "Player created with size: " + player.getWidth() + "x" + player.getHeight());
 
             // Adjust level size to be closer to screen size
             int levelWidth = screenWidth * 2;  // Make level 2x screen width
@@ -69,6 +73,10 @@ public class GameView extends SurfaceView implements Runnable {
 
             currentLevel = new Level(1, getContext(), levelWidth, levelHeight);
             isSetup = true;
+
+            // Start the player near the center of the level
+            player.setX(levelWidth / 4);
+            player.setY(levelHeight / 4);
         }
     }
 
@@ -100,6 +108,19 @@ public class GameView extends SurfaceView implements Runnable {
         player.update(currentGravity);
         currentLevel.checkCollisions(player);
         updateCamera();
+
+        // Check if level is completed
+        if (currentLevel.isCompleted()) {
+            // For now, just restart the level
+            int nextLevel = currentLevel.getLevelNumber() + 1;
+            currentLevel = new Level(nextLevel, getContext(), currentLevel.getLevelWidth(), currentLevel.getLevelHeight());
+
+            // Reset player position
+            player.setX(currentLevel.getLevelWidth() / 4);
+            player.setY(currentLevel.getLevelHeight() / 4);
+            player.setVelocityX(0);
+            player.setVelocityY(0);
+        }
     }
 
     private void draw() {
@@ -122,8 +143,19 @@ public class GameView extends SurfaceView implements Runnable {
                     // Draw player
                     player.draw(canvas, paint);
 
+                    // Debug: Draw a reference point at player position for clarity
+                    paint.setColor(Color.GREEN);
+                    canvas.drawCircle(player.getX() + player.getWidth()/2,
+                            player.getY() + player.getHeight()/2,
+                            5, paint);
+
                     // Restore canvas to original state
                     canvas.restore();
+
+                    // Draw HUD elements if needed
+                    paint.setColor(Color.WHITE);
+                    paint.setTextSize(30);
+                    canvas.drawText("Gravity: " + currentGravity.toString(), 20, 50, paint);
 
                 } finally {
                     holder.unlockCanvasAndPost(canvas);

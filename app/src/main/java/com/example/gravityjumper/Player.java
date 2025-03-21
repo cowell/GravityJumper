@@ -16,18 +16,23 @@ public class Player {
     private float x, y;
     private float velocityX, velocityY;
     private final float GRAVITY_FORCE = 0.5f;
-    private int width = 50;  // Default size if bitmap fails to load
-    private int height = 50;
+    private int width = 60;  // Larger default size for better visibility
+    private int height = 60;
     private RectF boundingBox;
 
     public Player(Context context) {
         try {
-            // Debug log to check resource loading
-            Log.d("Player", "Attempting to load player bitmap");
-
+            // Load the player image from resources
             bitmap = BitmapFactory.decodeResource(context.getResources(), R.drawable.player);
 
             if (bitmap != null) {
+                // If bitmap is too large or too small, resize it to something reasonable
+                if (bitmap.getWidth() > 200 || bitmap.getHeight() > 200) {
+                    bitmap = Bitmap.createScaledBitmap(bitmap, 80, 80, true);
+                } else if (bitmap.getWidth() < 30 || bitmap.getHeight() < 30) {
+                    bitmap = Bitmap.createScaledBitmap(bitmap, 60, 60, true);
+                }
+
                 width = bitmap.getWidth();
                 height = bitmap.getHeight();
                 Log.d("Player", "Bitmap loaded successfully: " + width + "x" + height);
@@ -36,6 +41,7 @@ public class Player {
             }
         } catch (Exception e) {
             Log.e("Player", "Failed to load player bitmap: " + e.getMessage());
+            bitmap = null; // Ensure bitmap is null so fallback is used
         }
 
         x = 100;
@@ -76,21 +82,29 @@ public class Player {
 
     public void draw(Canvas canvas, Paint paint) {
         if (bitmap != null) {
+            // Draw the actual bitmap
             canvas.drawBitmap(bitmap, x, y, paint);
-        } else {
-            // Fallback to a simple colored rectangle if bitmap fails to load
-            paint.setColor(Color.RED);
-            canvas.drawRect(boundingBox, paint);
 
-            // Debug drawing for bounding box
+            // Optional: Draw a frame around the player for clarity
             paint.setStyle(Paint.Style.STROKE);
             paint.setColor(Color.WHITE);
             canvas.drawRect(boundingBox, paint);
             paint.setStyle(Paint.Style.FILL);
+        } else {
+            // Fallback to a highly visible player rectangle if bitmap fails
+            paint.setColor(Color.RED);
+            canvas.drawRect(boundingBox, paint);
+
+            // Draw an X to make it distinct
+            paint.setColor(Color.WHITE);
+            paint.setStrokeWidth(3);
+            canvas.drawLine(x, y, x + width, y + height, paint);
+            canvas.drawLine(x + width, y, x, y + height, paint);
+            paint.setStrokeWidth(1);
         }
     }
 
-    // Getters and setters for collision detection
+    // Getters and setters for position
     public float getX() { return x; }
     public float getY() { return y; }
     public void setX(float x) {
@@ -101,10 +115,19 @@ public class Player {
         this.y = y;
         boundingBox.set(x, y, x + width, y + height);
     }
+
+    // Getters and setters for velocity
+    public float getVelocityX() { return velocityX; }
+    public float getVelocityY() { return velocityY; }
+    public void setVelocityX(float velocityX) { this.velocityX = velocityX; }
+    public void setVelocityY(float velocityY) { this.velocityY = velocityY; }
+
+    // Getters for dimensions
     public float getWidth() { return width; }
     public float getHeight() { return height; }
     public RectF getBoundingBox() { return boundingBox; }
 
+    // Collision response methods
     public void bounceX() {
         velocityX = -velocityX * 0.8f;
     }
