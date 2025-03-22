@@ -1,5 +1,4 @@
 // C:/Users/user/AndroidStudioProjects/GravityJumper/app/src/main/java/com/example/gravityjumper/GameView.java
-
 package com.example.gravityjumper;
 
 import android.content.Context;
@@ -23,6 +22,9 @@ public class GameView extends SurfaceView implements Runnable {
     private Level currentLevel;
     private GravityDirection currentGravity = GravityDirection.DOWN;
     private boolean isSetup = false;
+
+    // Add theme related variable
+    private LevelTheme currentTheme;
 
     // Camera/viewport variables
     private float cameraX = 0;
@@ -80,6 +82,10 @@ public class GameView extends SurfaceView implements Runnable {
             int levelHeight = screenHeight * 2; // Make level 2x screen height
 
             currentLevel = new Level(1, getContext(), levelWidth, levelHeight);
+
+            // Set the initial theme
+            currentTheme = LevelTheme.getThemeForLevel(1);
+
             isSetup = true;
 
             // Start the player near the center of the level
@@ -128,9 +134,12 @@ public class GameView extends SurfaceView implements Runnable {
                 saveHighScore();
             }
 
-            // Create next level
+            // Create next level with new theme
             int nextLevel = currentLevel.getLevelNumber() + 1;
             currentLevel = new Level(nextLevel, getContext(), currentLevel.getLevelWidth(), currentLevel.getLevelHeight());
+
+            // Update the theme for the new level
+            currentTheme = LevelTheme.getThemeForLevel(nextLevel);
 
             // Reset player position
             player.setX(currentLevel.getLevelWidth() / 4);
@@ -159,8 +168,8 @@ public class GameView extends SurfaceView implements Runnable {
             Canvas canvas = holder.lockCanvas();
             if (canvas != null) {
                 try {
-                    // Draw background
-                    canvas.drawColor(Color.BLACK);
+                    // Draw background with theme color
+                    canvas.drawColor(currentTheme.backgroundColor);
 
                     // Save canvas state before translating
                     canvas.save();
@@ -168,11 +177,11 @@ public class GameView extends SurfaceView implements Runnable {
                     // Apply camera translation
                     canvas.translate(-cameraX, -cameraY);
 
-                    // Draw level elements
-                    currentLevel.draw(canvas, paint);
+                    // Draw level elements with theme colors
+                    currentLevel.draw(canvas, paint, currentTheme);
 
-                    // Draw player
-                    player.draw(canvas, paint);
+                    // Draw player with theme color
+                    player.draw(canvas, paint, currentTheme.playerColor);
 
                     // Debug: Draw a reference point at player position for clarity
                     paint.setColor(Color.GREEN);
@@ -183,27 +192,30 @@ public class GameView extends SurfaceView implements Runnable {
                     // Restore canvas to original state
                     canvas.restore();
 
-                    // Draw HUD elements with larger text
-                    paint.setColor(Color.WHITE);
+                    // Draw HUD elements with theme text color
+                    paint.setColor(currentTheme.textColor);
                     paint.setTextSize(40);
 
+                    // Draw theme name
+                    canvas.drawText("Theme: " + currentTheme.themeName, 20, 60, paint);
+
                     // Draw current gravity direction
-                    canvas.drawText("Gravity: " + currentGravity.toString(), 20, 60, paint);
+                    canvas.drawText("Gravity: " + currentGravity.toString(), 20, 110, paint);
 
                     // Draw level number
-                    canvas.drawText("Level: " + currentLevel.getLevelNumber(), 20, 110, paint);
+                    canvas.drawText("Level: " + currentLevel.getLevelNumber(), 20, 160, paint);
 
                     // Draw current level score
-                    canvas.drawText("Level Score: " + currentLevel.getScore(), 20, 160, paint);
+                    canvas.drawText("Level Score: " + currentLevel.getScore(), 20, 210, paint);
 
                     // Draw total score
-                    canvas.drawText("Total Score: " + totalScore, 20, 210, paint);
+                    canvas.drawText("Total Score: " + totalScore, 20, 260, paint);
 
                     // Draw high score
-                    canvas.drawText("High Score: " + highScore, 20, 260, paint);
+                    canvas.drawText("High Score: " + highScore, 20, 310, paint);
 
-                    // Draw direction indicator arrow
-                    paint.setColor(Color.WHITE);
+                    // Draw direction indicator arrow with theme color
+                    paint.setColor(currentTheme.textColor);
                     paint.setStrokeWidth(5);
                     float arrowSize = 60;
                     float centerX = screenWidth / 2;

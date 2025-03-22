@@ -1,5 +1,4 @@
 // C:/Users/user/AndroidStudioProjects/GravityJumper/app/src/main/java/com/example/gravityjumper/Player.java
-
 package com.example.gravityjumper;
 
 import android.content.Context;
@@ -7,8 +6,14 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.ColorFilter;
+import android.graphics.ColorMatrix;
+import android.graphics.ColorMatrixColorFilter;
+import android.graphics.LightingColorFilter;
 import android.graphics.Matrix;
 import android.graphics.Paint;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffColorFilter;
 import android.graphics.RectF;
 import android.util.Log;
 
@@ -168,13 +173,21 @@ public class Player {
                 originalBitmap.getWidth(), originalBitmap.getHeight(), matrix, true);
     }
 
-    public void draw(Canvas canvas, Paint paint) {
+    public void draw(Canvas canvas, Paint paint, int playerColor) {
+        // Save original paint state
+        int originalColor = paint.getColor();
+        ColorFilter originalFilter = paint.getColorFilter();
+
         if (bitmap != null) {
-            // Draw the transformed bitmap
-            canvas.drawBitmap(bitmap, x, y, paint);
+            // Apply a color filter to tint the bitmap with the theme color
+            Paint coloredPaint = new Paint(paint);
+            coloredPaint.setColorFilter(new PorterDuffColorFilter(playerColor, PorterDuff.Mode.SRC_ATOP));
+
+            // Draw the transformed bitmap with the color filter
+            canvas.drawBitmap(bitmap, x, y, coloredPaint);
         } else {
-            // Fallback to a highly visible player rectangle if bitmap fails
-            paint.setColor(Color.RED);
+            // Fallback to a rectangle using the theme color
+            paint.setColor(playerColor);
             canvas.drawRect(boundingBox, paint);
 
             // Draw an X to make it distinct
@@ -184,6 +197,10 @@ public class Player {
             canvas.drawLine(x + width, y, x, y + height, paint);
             paint.setStrokeWidth(1);
         }
+
+        // Restore the original paint state
+        paint.setColor(originalColor);
+        paint.setColorFilter(originalFilter);
     }
 
     // Collision response methods with jiggle effect - less bouncy

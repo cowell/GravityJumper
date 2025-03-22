@@ -1,5 +1,4 @@
 // C:/Users/user/AndroidStudioProjects/GravityJumper/app/src/main/java/com/example/gravityjumper/Level.java
-
 package com.example.gravityjumper;
 
 import android.content.Context;
@@ -160,15 +159,19 @@ public class Level {
         goalArea = new RectF(goalX, goalY, goalX + goalSize, goalY + goalSize);
     }
 
-    public void draw(Canvas canvas, Paint paint) {
-        // Draw platforms
-        paint.setColor(Color.GRAY);
+    public void draw(Canvas canvas, Paint paint, LevelTheme theme) {
+        // Save original paint properties
+        int originalColor = paint.getColor();
+        int originalAlpha = paint.getAlpha();
+
+        // Draw platforms with theme color
+        paint.setColor(theme.platformColor);
         for (Platform platform : platforms) {
             canvas.drawRect(platform.getRect(), paint);
         }
 
         // Draw collectibles - larger and with glow effect
-        paint.setColor(Color.YELLOW);
+        paint.setColor(theme.collectibleColor);
         for (Collectible collectible : collectibles) {
             if (collectible.isNotCollected()) {
                 // Add a pulsing glow effect (draw this first, behind the main circle)
@@ -181,9 +184,23 @@ public class Level {
             }
         }
 
-        // Draw goal area
-        paint.setColor(Color.GREEN);
+        // Derive goal color from theme (green tint of player color)
+        int goalColor = blendColors(theme.playerColor, Color.GREEN, 0.5f);
+        paint.setColor(goalColor);
         canvas.drawRect(goalArea, paint);
+
+        // Restore original paint properties
+        paint.setColor(originalColor);
+        paint.setAlpha(originalAlpha);
+    }
+
+    // Helper method to blend colors
+    private int blendColors(int color1, int color2, float ratio) {
+        final float inverseRatio = 1f - ratio;
+        float r = (Color.red(color1) * ratio) + (Color.red(color2) * inverseRatio);
+        float g = (Color.green(color1) * ratio) + (Color.green(color2) * inverseRatio);
+        float b = (Color.blue(color1) * ratio) + (Color.blue(color2) * inverseRatio);
+        return Color.rgb((int) r, (int) g, (int) b);
     }
 
     public void checkCollisions(Player player) {
@@ -300,6 +317,7 @@ public class Level {
 
         public float getX() { return x; }
         public float getY() { return y; }
+        public float getRadius() { return 25; } // Add this method for consistency
 
         public boolean isCollected() {
             return collected;
