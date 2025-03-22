@@ -21,6 +21,11 @@ public class Level {
     private boolean completed = false;
     private Context context;
 
+    // New fields for scoring
+    private int score = 0;
+    private int collectibleValue = 100; // Base points for collecting an item
+    private int levelCompletionBonus = 500; // Bonus for completing the level
+
     // Add overloaded constructor
     public Level(int levelNumber, Context context) {
         this(levelNumber, context, 2000, 1500); // Default sizes
@@ -36,6 +41,15 @@ public class Level {
         collectibles = new ArrayList<>();
 
         generateLevel();
+    }
+
+    // Getters for score and level information
+    public int getScore() {
+        return score;
+    }
+
+    public void resetScore() {
+        score = 0;
     }
 
     // This method returns the level number
@@ -72,11 +86,40 @@ public class Level {
             platforms.add(new Platform(x, y, width, height));
         }
 
-        // Add collectibles
+        // Add collectibles with a safe distance from walls
         int collectibleCount = 3;
+        int safeDistance = 100; // Minimum distance from any wall or platform
+
         for (int i = 0; i < collectibleCount; i++) {
-            int x = random.nextInt(levelWidth - 100) + 50;
-            int y = random.nextInt(levelHeight - 100) + 50;
+            // Ensure collectibles are placed with enough space from walls
+            int x = random.nextInt(levelWidth - 2*safeDistance) + safeDistance;
+            int y = random.nextInt(levelHeight - 2*safeDistance) + safeDistance;
+
+            // Check if too close to any platform and reposition if needed
+            boolean validPosition = false;
+            int attempts = 0;
+
+            while (!validPosition && attempts < 10) {
+                validPosition = true;
+
+                for (Platform platform : platforms) {
+                    RectF rect = platform.getRect();
+
+                    // Check if collectible is too close to this platform
+                    if (x < rect.right + safeDistance && x > rect.left - safeDistance &&
+                            y < rect.bottom + safeDistance && y > rect.top - safeDistance) {
+                        // Too close, mark as invalid position
+                        validPosition = false;
+
+                        // Try new position
+                        x = random.nextInt(levelWidth - 2*safeDistance) + safeDistance;
+                        y = random.nextInt(levelHeight - 2*safeDistance) + safeDistance;
+                        break;
+                    }
+                }
+
+                attempts++;
+            }
 
             collectibles.add(new Collectible(x, y));
         }
@@ -115,17 +158,19 @@ public class Level {
             }
         }
 
-        // Check collectible collisions
+        // Check collectible collisions and award points with increased collection radius
         for (Collectible collectible : collectibles) {
             if (!collectible.isCollected() &&
                     Math.hypot(collectible.getX() - player.getX() - player.getWidth()/2,
-                            collectible.getY() - player.getY() - player.getHeight()/2) < 30) {
+                            collectible.getY() - player.getY() - player.getHeight()/2) < 45) { // Increased from 30 to 45
                 collectible.collect();
+                // Award points for collecting an item
+                score += collectibleValue;
                 SoundManager.getInstance(context).playCollectSound();
             }
         }
 
-        // Check goal area
+        // Check goal area and award completion bonus
         RectF playerRect = new RectF(player.getX(), player.getY(),
                 player.getX() + player.getWidth(),
                 player.getY() + player.getHeight());
@@ -139,8 +184,12 @@ public class Level {
                 }
             }
 
-            if (allCollected) {
+            if (allCollected && !completed) {
                 completed = true;
+                // Award bonus points for completing the level
+                score += levelCompletionBonus;
+                // Apply level multiplier to make higher levels worth more
+                score += levelCompletionBonus * levelNumber;
                 SoundManager.getInstance(context).playLevelCompleteSound();
             }
         }

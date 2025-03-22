@@ -3,6 +3,7 @@
 package com.example.gravityjumper;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -28,6 +29,10 @@ public class GameView extends SurfaceView implements Runnable {
     private float cameraY = 0;
     private int screenWidth;
     private int screenHeight;
+
+    // Score tracking variables
+    private int totalScore = 0;
+    private int highScore = 0;
 
     public enum GravityDirection {
         DOWN, UP, LEFT, RIGHT
@@ -66,6 +71,9 @@ public class GameView extends SurfaceView implements Runnable {
         if (!isSetup && screenWidth > 0 && screenHeight > 0) {
             player = new Player(getContext());
             Log.d("GameView", "Player created with size: " + player.getWidth() + "x" + player.getHeight());
+
+            // Load high score
+            loadHighScore();
 
             // Adjust level size to be closer to screen size
             int levelWidth = screenWidth * 2;  // Make level 2x screen width
@@ -111,7 +119,16 @@ public class GameView extends SurfaceView implements Runnable {
 
         // Check if level is completed
         if (currentLevel.isCompleted()) {
-            // For now, just restart the level
+            // Add level score to total score
+            totalScore += currentLevel.getScore();
+
+            // Update high score if needed
+            if (totalScore > highScore) {
+                highScore = totalScore;
+                saveHighScore();
+            }
+
+            // Create next level
             int nextLevel = currentLevel.getLevelNumber() + 1;
             currentLevel = new Level(nextLevel, getContext(), currentLevel.getLevelWidth(), currentLevel.getLevelHeight());
 
@@ -121,6 +138,20 @@ public class GameView extends SurfaceView implements Runnable {
             player.setVelocityX(0);
             player.setVelocityY(0);
         }
+    }
+
+    // Add method to save high score to SharedPreferences
+    private void saveHighScore() {
+        SharedPreferences prefs = getContext().getSharedPreferences("GravityJumperPrefs", Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = prefs.edit();
+        editor.putInt("highScore", highScore);
+        editor.apply();
+    }
+
+    // Add method to load high score from SharedPreferences
+    private void loadHighScore() {
+        SharedPreferences prefs = getContext().getSharedPreferences("GravityJumperPrefs", Context.MODE_PRIVATE);
+        highScore = prefs.getInt("highScore", 0);
     }
 
     private void draw() {
@@ -152,10 +183,24 @@ public class GameView extends SurfaceView implements Runnable {
                     // Restore canvas to original state
                     canvas.restore();
 
-                    // Draw HUD elements if needed
+                    // Draw HUD elements with larger text
                     paint.setColor(Color.WHITE);
-                    paint.setTextSize(30);
-                    canvas.drawText("Gravity: " + currentGravity.toString(), 20, 50, paint);
+                    paint.setTextSize(40); // Increased from 30 to 40
+
+                    // Draw current gravity direction
+                    canvas.drawText("Gravity: " + currentGravity.toString(), 20, 60, paint);
+
+                    // Draw level number
+                    canvas.drawText("Level: " + currentLevel.getLevelNumber(), 20, 110, paint);
+
+                    // Draw current level score
+                    canvas.drawText("Level Score: " + currentLevel.getScore(), 20, 160, paint);
+
+                    // Draw total score
+                    canvas.drawText("Total Score: " + totalScore, 20, 210, paint);
+
+                    // Draw high score
+                    canvas.drawText("High Score: " + highScore, 20, 260, paint);
 
                 } finally {
                     holder.unlockCanvasAndPost(canvas);
@@ -218,5 +263,15 @@ public class GameView extends SurfaceView implements Runnable {
             return true;
         }
         return super.onTouchEvent(event);
+    }
+
+    // Method to get current score for MainActivity
+    public int getTotalScore() {
+        return totalScore;
+    }
+
+    // Method to get high score for MainActivity
+    public int getHighScore() {
+        return highScore;
     }
 }
