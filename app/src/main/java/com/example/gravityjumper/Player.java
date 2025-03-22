@@ -17,8 +17,8 @@ public class Player {
     private Bitmap originalBitmap; // Store the original bitmap for transformations
     private float x, y;
     private float velocityX, velocityY;
-    private final float GRAVITY_FORCE = 0.5f;
-    private int width = 100;  // Larger default size
+    private final float GRAVITY_FORCE = 0.5f; // Adjust as needed
+    private int width = 100;  // Default size if bitmap fails to load
     private int height = 100;
     private RectF boundingBox;
 
@@ -92,9 +92,9 @@ public class Player {
         x += velocityX;
         y += velocityY;
 
-        // Apply simple drag
-        velocityX *= 0.98f;
-        velocityY *= 0.98f;
+        // Apply more drag for better control
+        velocityX *= 0.95f; // More drag (was 0.98f)
+        velocityY *= 0.95f; // More drag (was 0.98f)
 
         // Update bounding box for collision detection
         boundingBox.set(x, y, x + width, y + height);
@@ -186,9 +186,9 @@ public class Player {
         }
     }
 
-    // Collision response methods with jiggle effect
+    // Collision response methods with jiggle effect - less bouncy
     public void bounceX() {
-        velocityX = -velocityX * 0.8f;
+        velocityX = -velocityX * 0.6f; // Less bouncy (was 0.8f)
         startJiggle();
 
         // Squash horizontally on impact
@@ -197,7 +197,7 @@ public class Player {
     }
 
     public void bounceY() {
-        velocityY = -velocityY * 0.8f;
+        velocityY = -velocityY * 0.6f; // Less bouncy (was 0.8f)
         startJiggle();
 
         // Squash vertically on impact

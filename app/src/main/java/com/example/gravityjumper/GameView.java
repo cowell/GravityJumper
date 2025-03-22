@@ -3,6 +3,7 @@
 package com.example.gravityjumper;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -28,6 +29,10 @@ public class GameView extends SurfaceView implements Runnable {
     private float cameraY = 0;
     private int screenWidth;
     private int screenHeight;
+
+    // Score tracking variables
+    private int totalScore = 0;
+    private int highScore = 0;
 
     public enum GravityDirection {
         DOWN, UP, LEFT, RIGHT
@@ -66,6 +71,9 @@ public class GameView extends SurfaceView implements Runnable {
         if (!isSetup && screenWidth > 0 && screenHeight > 0) {
             player = new Player(getContext());
             Log.d("GameView", "Player created with size: " + player.getWidth() + "x" + player.getHeight());
+
+            // Load high score
+            loadHighScore();
 
             // Adjust level size to be closer to screen size
             int levelWidth = screenWidth * 2;  // Make level 2x screen width
@@ -111,7 +119,16 @@ public class GameView extends SurfaceView implements Runnable {
 
         // Check if level is completed
         if (currentLevel.isCompleted()) {
-            // For now, just restart the level
+            // Add level score to total score
+            totalScore += currentLevel.getScore();
+
+            // Update high score if needed
+            if (totalScore > highScore) {
+                highScore = totalScore;
+                saveHighScore();
+            }
+
+            // Create next level
             int nextLevel = currentLevel.getLevelNumber() + 1;
             currentLevel = new Level(nextLevel, getContext(), currentLevel.getLevelWidth(), currentLevel.getLevelHeight());
 
@@ -121,6 +138,20 @@ public class GameView extends SurfaceView implements Runnable {
             player.setVelocityX(0);
             player.setVelocityY(0);
         }
+    }
+
+    // Save high score to SharedPreferences
+    private void saveHighScore() {
+        SharedPreferences prefs = getContext().getSharedPreferences("GravityJumperPrefs", Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = prefs.edit();
+        editor.putInt("highScore", highScore);
+        editor.apply();
+    }
+
+    // Load high score from SharedPreferences
+    private void loadHighScore() {
+        SharedPreferences prefs = getContext().getSharedPreferences("GravityJumperPrefs", Context.MODE_PRIVATE);
+        highScore = prefs.getInt("highScore", 0);
     }
 
     private void draw() {
@@ -152,10 +183,56 @@ public class GameView extends SurfaceView implements Runnable {
                     // Restore canvas to original state
                     canvas.restore();
 
-                    // Draw HUD elements if needed
+                    // Draw HUD elements with larger text
                     paint.setColor(Color.WHITE);
-                    paint.setTextSize(30);
-                    canvas.drawText("Gravity: " + currentGravity.toString(), 20, 50, paint);
+                    paint.setTextSize(40);
+
+                    // Draw current gravity direction
+                    canvas.drawText("Gravity: " + currentGravity.toString(), 20, 60, paint);
+
+                    // Draw level number
+                    canvas.drawText("Level: " + currentLevel.getLevelNumber(), 20, 110, paint);
+
+                    // Draw current level score
+                    canvas.drawText("Level Score: " + currentLevel.getScore(), 20, 160, paint);
+
+                    // Draw total score
+                    canvas.drawText("Total Score: " + totalScore, 20, 210, paint);
+
+                    // Draw high score
+                    canvas.drawText("High Score: " + highScore, 20, 260, paint);
+
+                    // Draw direction indicator arrow
+                    paint.setColor(Color.WHITE);
+                    paint.setStrokeWidth(5);
+                    float arrowSize = 60;
+                    float centerX = screenWidth / 2;
+                    float centerY = screenHeight - 100;
+
+                    // Draw arrow pointing in current gravity direction
+                    switch (currentGravity) {
+                        case UP:
+                            canvas.drawLine(centerX, centerY, centerX, centerY - arrowSize, paint);
+                            canvas.drawLine(centerX, centerY - arrowSize, centerX - arrowSize/2, centerY - arrowSize/2, paint);
+                            canvas.drawLine(centerX, centerY - arrowSize, centerX + arrowSize/2, centerY - arrowSize/2, paint);
+                            break;
+                        case DOWN:
+                            canvas.drawLine(centerX, centerY, centerX, centerY + arrowSize, paint);
+                            canvas.drawLine(centerX, centerY + arrowSize, centerX - arrowSize/2, centerY + arrowSize/2, paint);
+                            canvas.drawLine(centerX, centerY + arrowSize, centerX + arrowSize/2, centerY + arrowSize/2, paint);
+                            break;
+                        case LEFT:
+                            canvas.drawLine(centerX, centerY, centerX - arrowSize, centerY, paint);
+                            canvas.drawLine(centerX - arrowSize, centerY, centerX - arrowSize/2, centerY - arrowSize/2, paint);
+                            canvas.drawLine(centerX - arrowSize, centerY, centerX - arrowSize/2, centerY + arrowSize/2, paint);
+                            break;
+                        case RIGHT:
+                            canvas.drawLine(centerX, centerY, centerX + arrowSize, centerY, paint);
+                            canvas.drawLine(centerX + arrowSize, centerY, centerX + arrowSize/2, centerY - arrowSize/2, paint);
+                            canvas.drawLine(centerX + arrowSize, centerY, centerX + arrowSize/2, centerY + arrowSize/2, paint);
+                            break;
+                    }
+                    paint.setStrokeWidth(1);
 
                 } finally {
                     holder.unlockCanvasAndPost(canvas);
@@ -189,34 +266,69 @@ public class GameView extends SurfaceView implements Runnable {
         gameThread.start();
     }
 
+    // Simplified direct gravity control
     public void flipGravity() {
-        // Cycle through gravity directions
+        // Cycle through all four directions
         switch (currentGravity) {
             case DOWN:
-                currentGravity = GravityDirection.UP;
+                setGravityDirection(GravityDirection.UP);
                 break;
             case UP:
-                currentGravity = GravityDirection.LEFT;
-                break;
-            case LEFT:
-                currentGravity = GravityDirection.RIGHT;
+                setGravityDirection(GravityDirection.RIGHT);
                 break;
             case RIGHT:
-                currentGravity = GravityDirection.DOWN;
+                setGravityDirection(GravityDirection.LEFT);
+                break;
+            case LEFT:
+                setGravityDirection(GravityDirection.DOWN);
                 break;
         }
-
-        // Play flip sound
-        SoundManager.getInstance(getContext()).playFlipSound();
     }
 
+    private void setGravityDirection(GravityDirection newDirection) {
+        if (currentGravity != newDirection) {
+            currentGravity = newDirection;
+            // Play flip sound
+            SoundManager.getInstance(getContext()).playFlipSound();
+        }
+    }
+
+    // Split the screen into quadrants for directional control
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        // Allow tapping the screen to flip gravity too
         if (event.getAction() == MotionEvent.ACTION_DOWN) {
-            flipGravity();
+            // Determine which quadrant of the screen was touched
+            float x = event.getX();
+            float y = event.getY();
+
+            // Left side = LEFT gravity
+            if (x < screenWidth / 2 && y > screenHeight / 4 && y < screenHeight * 3/4) {
+                setGravityDirection(GravityDirection.LEFT);
+            }
+            // Right side = RIGHT gravity
+            else if (x > screenWidth / 2 && y > screenHeight / 4 && y < screenHeight * 3/4) {
+                setGravityDirection(GravityDirection.RIGHT);
+            }
+            // Top area = UP gravity
+            else if (y < screenHeight / 2) {
+                setGravityDirection(GravityDirection.UP);
+            }
+            // Bottom area = DOWN gravity
+            else {
+                setGravityDirection(GravityDirection.DOWN);
+            }
             return true;
         }
         return super.onTouchEvent(event);
+    }
+
+    // Method to get current score for MainActivity
+    public int getTotalScore() {
+        return totalScore;
+    }
+
+    // Method to get high score for MainActivity
+    public int getHighScore() {
+        return highScore;
     }
 }

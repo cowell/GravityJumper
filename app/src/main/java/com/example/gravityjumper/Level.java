@@ -21,6 +21,11 @@ public class Level {
     private boolean completed = false;
     private Context context;
 
+    // New fields for scoring
+    private int score = 0;
+    private int collectibleValue = 100; // Base points for collecting an item
+    private int levelCompletionBonus = 500; // Bonus for completing the level
+
     // Add overloaded constructor
     public Level(int levelNumber, Context context) {
         this(levelNumber, context, 2000, 1500); // Default sizes
@@ -36,6 +41,15 @@ public class Level {
         collectibles = new ArrayList<>();
 
         generateLevel();
+    }
+
+    // Getters for score and level information
+    public int getScore() {
+        return score;
+    }
+
+    public void resetScore() {
+        score = 0;
     }
 
     // This method returns the level number
@@ -66,25 +80,84 @@ public class Level {
         for (int i = 0; i < platformCount; i++) {
             int width = random.nextInt(300) + 100;
             int height = random.nextInt(30) + 20;
-            int x = random.nextInt(levelWidth - width - 100) + 50;
-            int y = random.nextInt(levelHeight - height - 100) + 50;
+            int x = random.nextInt(levelWidth - width - 200) + 100; // More padding
+            int y = random.nextInt(levelHeight - height - 200) + 100; // More padding
 
             platforms.add(new Platform(x, y, width, height));
         }
 
-        // Add collectibles
+        // Add collectibles with a safe distance from platforms
         int collectibleCount = 3;
+        int safeDistance = 120; // Increase minimum distance from platforms
+
         for (int i = 0; i < collectibleCount; i++) {
-            int x = random.nextInt(levelWidth - 100) + 50;
-            int y = random.nextInt(levelHeight - 100) + 50;
+            int x = random.nextInt(levelWidth - 300) + 150; // More padding from walls
+            int y = random.nextInt(levelHeight - 300) + 150; // More padding from walls
+
+            // Check if too close to any platform and reposition if needed
+            boolean validPosition = false;
+            int attempts = 0;
+
+            while (!validPosition && attempts < 15) {
+                validPosition = true;
+
+                for (Platform platform : platforms) {
+                    RectF rect = platform.getRect();
+
+                    // Check if collectible is too close to this platform
+                    if (x < rect.right + safeDistance && x > rect.left - safeDistance &&
+                            y < rect.bottom + safeDistance && y > rect.top - safeDistance) {
+                        // Too close, mark as invalid position
+                        validPosition = false;
+
+                        // Try new position
+                        x = random.nextInt(levelWidth - 300) + 150;
+                        y = random.nextInt(levelHeight - 300) + 150;
+                        break;
+                    }
+                }
+
+                attempts++;
+            }
 
             collectibles.add(new Collectible(x, y));
         }
 
-        // Set goal area
-        int goalX = random.nextInt(levelWidth - 200) + 100;
-        int goalY = random.nextInt(levelHeight - 200) + 100;
-        goalArea = new RectF(goalX, goalY, goalX + 100, goalY + 100);
+        // Set goal area with safe distance
+        boolean validGoalPosition = false;
+        int goalX = 0, goalY = 0;
+        int goalSize = 100;
+        int goalSafeDistance = 150;
+        int attempts = 0;
+
+        while (!validGoalPosition && attempts < 20) {
+            validGoalPosition = true;
+            goalX = random.nextInt(levelWidth - 300) + 150;
+            goalY = random.nextInt(levelHeight - 300) + 150;
+
+            // Check if too close to any platform
+            for (Platform platform : platforms) {
+                RectF rect = platform.getRect();
+                if (goalX < rect.right + goalSafeDistance && goalX + goalSize > rect.left - goalSafeDistance &&
+                        goalY < rect.bottom + goalSafeDistance && goalY + goalSize > rect.top - goalSafeDistance) {
+                    validGoalPosition = false;
+                    break;
+                }
+            }
+
+            // Check if too close to any collectible
+            for (Collectible collectible : collectibles) {
+                if (Math.hypot(collectible.getX() - (goalX + goalSize/2),
+                        collectible.getY() - (goalY + goalSize/2)) < goalSafeDistance) {
+                    validGoalPosition = false;
+                    break;
+                }
+            }
+
+            attempts++;
+        }
+
+        goalArea = new RectF(goalX, goalY, goalX + goalSize, goalY + goalSize);
     }
 
     public void draw(Canvas canvas, Paint paint) {
@@ -94,11 +167,17 @@ public class Level {
             canvas.drawRect(platform.getRect(), paint);
         }
 
-        // Draw collectibles
+        // Draw collectibles - larger and with glow effect
         paint.setColor(Color.YELLOW);
         for (Collectible collectible : collectibles) {
-            if (!collectible.isCollected()) {
-                canvas.drawCircle(collectible.getX(), collectible.getY(), 15, paint);
+            if (collectible.isNotCollected()) {
+                // Add a pulsing glow effect (draw this first, behind the main circle)
+                paint.setAlpha(100);
+                canvas.drawCircle(collectible.getX(), collectible.getY(), 40, paint);
+                paint.setAlpha(255);
+
+                // Then draw the main collectible
+                canvas.drawCircle(collectible.getX(), collectible.getY(), 25, paint);
             }
         }
 
@@ -108,24 +187,29 @@ public class Level {
     }
 
     public void checkCollisions(Player player) {
-        // Check platform collisions
+        // ONLY check platform collisions for obstacle collision
         for (Platform platform : platforms) {
             if (platform.intersects(player)) {
                 resolveCollision(platform, player);
             }
         }
 
-        // Check collectible collisions
+        // Collectibles are just pickups, not obstacles
         for (Collectible collectible : collectibles) {
-            if (!collectible.isCollected() &&
-                    Math.hypot(collectible.getX() - player.getX() - player.getWidth()/2,
-                            collectible.getY() - player.getY() - player.getHeight()/2) < 30) {
-                collectible.collect();
-                SoundManager.getInstance(context).playCollectSound();
+            if (collectible.isNotCollected()) {
+                float distX = collectible.getX() - (player.getX() + player.getWidth()/2);
+                float distY = collectible.getY() - (player.getY() + player.getHeight()/2);
+                float distance = (float) Math.sqrt(distX * distX + distY * distY);
+
+                if (distance < 80) { // Large collection radius
+                    collectible.collect();
+                    score += collectibleValue;
+                    SoundManager.getInstance(context).playCollectSound();
+                }
             }
         }
 
-        // Check goal area
+        // Check goal area and award completion bonus
         RectF playerRect = new RectF(player.getX(), player.getY(),
                 player.getX() + player.getWidth(),
                 player.getY() + player.getHeight());
@@ -133,14 +217,18 @@ public class Level {
             // All collectibles must be collected to complete level
             boolean allCollected = true;
             for (Collectible c : collectibles) {
-                if (!c.isCollected()) {
+                if (c.isNotCollected()) {
                     allCollected = false;
                     break;
                 }
             }
 
-            if (allCollected) {
+            if (allCollected && !completed) {
                 completed = true;
+                // Award bonus points for completing the level
+                score += levelCompletionBonus;
+                // Apply level multiplier to make higher levels worth more
+                score += levelCompletionBonus * levelNumber;
                 SoundManager.getInstance(context).playLevelCompleteSound();
             }
         }
@@ -215,6 +303,11 @@ public class Level {
 
         public boolean isCollected() {
             return collected;
+        }
+
+        // Add this method to avoid negating isCollected() everywhere
+        public boolean isNotCollected() {
+            return !collected;
         }
 
         public void collect() {
