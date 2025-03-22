@@ -69,7 +69,9 @@ public class LevelTheme {
                     Color.rgb(255, 255, 224)  // Light yellow text
             )
     };
-
+    public static LevelTheme[] getThemes() {
+        return THEMES;
+    }
     public static LevelTheme getThemeForLevel(int level) {
         // Use modulo to cycle through themes
         return THEMES[(level - 1) % THEMES.length];

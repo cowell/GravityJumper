@@ -19,4 +19,12 @@
         android:layout_marginBottom="80dp"
         android:text="Flip Gravity" />
 
+    <Button
+        android:id="@+id/music_toggle_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Music: ON"
+        android:layout_gravity="top|end"
+        android:layout_margin="16dp" />
+
 </RelativeLayout>

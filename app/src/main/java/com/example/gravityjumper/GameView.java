@@ -23,8 +23,11 @@ public class GameView extends SurfaceView implements Runnable {
     private GravityDirection currentGravity = GravityDirection.DOWN;
     private boolean isSetup = false;
 
-    // Add theme related variable
+    // Theme related variable
     private LevelTheme currentTheme;
+
+    // Music manager
+    private MusicManager musicManager;
 
     // Camera/viewport variables
     private float cameraX = 0;
@@ -59,6 +62,7 @@ public class GameView extends SurfaceView implements Runnable {
         holder = getHolder();
         paint = new Paint();
         paint.setAntiAlias(true);
+        musicManager = MusicManager.getInstance(context);
     }
 
     @Override
@@ -85,6 +89,9 @@ public class GameView extends SurfaceView implements Runnable {
 
             // Set the initial theme
             currentTheme = LevelTheme.getThemeForLevel(1);
+
+            // Start music for first level
+            musicManager.playMusicForTheme(0);
 
             isSetup = true;
 
@@ -141,6 +148,10 @@ public class GameView extends SurfaceView implements Runnable {
             // Update the theme for the new level
             currentTheme = LevelTheme.getThemeForLevel(nextLevel);
 
+            // Start music for new theme
+            int themeIndex = (nextLevel - 1) % LevelTheme.getThemes().length;
+            musicManager.playMusicForTheme(themeIndex);
+
             // Reset player position
             player.setX(currentLevel.getLevelWidth() / 4);
             player.setY(currentLevel.getLevelHeight() / 4);
@@ -180,7 +191,7 @@ public class GameView extends SurfaceView implements Runnable {
                     // Draw level elements with theme colors
                     currentLevel.draw(canvas, paint, currentTheme);
 
-                    // Draw player with theme color
+                    // Draw player with theme color (the Player class ignores the color)
                     player.draw(canvas, paint, currentTheme.playerColor);
 
                     // Debug: Draw a reference point at player position for clarity
@@ -263,6 +274,7 @@ public class GameView extends SurfaceView implements Runnable {
 
     public void pause() {
         playing = false;
+        musicManager.pauseMusic();
         try {
             if (gameThread != null) {
                 gameThread.join();
@@ -274,6 +286,7 @@ public class GameView extends SurfaceView implements Runnable {
 
     public void resume() {
         playing = true;
+        musicManager.resumeMusic();
         gameThread = new Thread(this);
         gameThread.start();
     }

@@ -85,6 +85,24 @@ public class MainActivity extends AppCompatActivity {
         hideSystemUI();
     }
 
+    private void setupMusicToggle() {
+        Button musicToggleButton = findViewById(R.id.music_toggle_button);
+        updateMusicButtonText(musicToggleButton);
+
+        musicToggleButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                MusicManager.getInstance(MainActivity.this).toggleMusic();
+                updateMusicButtonText(musicToggleButton);
+            }
+        });
+    }
+
+    private void updateMusicButtonText(Button button) {
+        boolean musicEnabled = MusicManager.getInstance(this).isMusicEnabled();
+        button.setText(musicEnabled ? "Music: ON" : "Music: OFF");
+    }
+
     // Add method to show score dialog
     private void showScoreDialog(int score, int highScore) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
