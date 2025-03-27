@@ -1,7 +1,8 @@
-// C:/Users/user/AndroidStudioProjects/GravityJumper/app/src/main/java/com/example/gravityjumper/MainActivity.java
-
+// MainActivity.java
 package com.example.gravityjumper;
 
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.View;
 import android.view.WindowInsets;
@@ -15,6 +16,8 @@ import androidx.core.view.WindowCompat;
 public class MainActivity extends AppCompatActivity {
 
     private GameView gameView;
+    private static final String PREFS_NAME = "ThemePrefs";
+    private static final String CURRENT_THEME_KEY = "CurrentTheme";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -31,6 +34,12 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         gameView = findViewById(R.id.gameView);
+
+        // Load saved theme before game starts
+        LevelTheme savedTheme = loadSavedTheme();
+        // Pass the saved theme to GameView
+        gameView.setInitialTheme(savedTheme);
+
         Button flipGravityButton = findViewById(R.id.flipGravityButton);
 
         flipGravityButton.setOnClickListener(new View.OnClickListener() {
@@ -51,6 +60,27 @@ public class MainActivity extends AppCompatActivity {
                 getOnBackPressedDispatcher().onBackPressed();
             }
         });
+
+        // Setup music toggle button
+        setupMusicToggle();
+    }
+
+    // Method to load saved theme
+    private LevelTheme loadSavedTheme() {
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        String savedThemeName = prefs.getString(CURRENT_THEME_KEY, null);
+
+        if (savedThemeName != null) {
+            // Find the theme by name
+            for (LevelTheme theme : LevelTheme.THEMES) {
+                if (theme.themeName.equals(savedThemeName)) {
+                    return theme;
+                }
+            }
+        }
+
+        // Default to first theme if saved theme not found
+        return LevelTheme.getThemeForLevel(1);
     }
 
     private void hideSystemUI() {
@@ -103,7 +133,12 @@ public class MainActivity extends AppCompatActivity {
         button.setText(musicEnabled ? "Music: ON" : "Music: OFF");
     }
 
-    // Add method to show score dialog
+    public void onThemeButtonClick(View view) {
+        Intent intent = new Intent(this, ThemeSelectionActivity.class);
+        startActivity(intent);
+    }
+
+    // Method to show score dialog
     private void showScoreDialog(int score, int highScore) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Game Progress");

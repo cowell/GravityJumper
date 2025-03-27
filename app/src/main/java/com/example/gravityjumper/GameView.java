@@ -1,9 +1,11 @@
-// C:/Users/user/AndroidStudioProjects/GravityJumper/app/src/main/java/com/example/gravityjumper/GameView.java
+// GameView.java
 package com.example.gravityjumper;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -12,6 +14,8 @@ import android.util.Log;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import java.util.ArrayList;
+import java.util.List;
 
 public class GameView extends SurfaceView implements Runnable {
 
@@ -27,8 +31,16 @@ public class GameView extends SurfaceView implements Runnable {
     // Theme related variable
     private LevelTheme currentTheme;
 
+    // Theme bitmaps
+    private Bitmap backgroundBitmap;
+    private Bitmap collectibleBitmap;
+
     // Music manager
     private MusicManager musicManager;
+
+    // Game objects
+    private List<Obstacle> obstacles;
+    private List<Level.Collectible> collectibles;
 
     // Camera/viewport variables
     private float cameraX = 0;
@@ -64,6 +76,75 @@ public class GameView extends SurfaceView implements Runnable {
         paint = new Paint();
         paint.setAntiAlias(true);
         musicManager = MusicManager.getInstance(context);
+
+        // Initialize game object collections
+        obstacles = new ArrayList<>();
+        collectibles = new ArrayList<>();
+    }
+
+    // Add method to set initial theme
+    public void setInitialTheme(LevelTheme theme) {
+        this.currentTheme = theme;
+        // Load theme resources
+        loadThemeResources();
+
+        // If player is already initialized, update its bitmap
+        if (player != null) {
+            player.updatePlayerBitmap(getContext(), theme.themeName);
+        }
+    }
+
+    // Load theme-specific resources
+    private void loadThemeResources() {
+        if (currentTheme != null) {
+            try {
+                // Load background bitmap
+                int backgroundResId = getBackgroundResourceForTheme(currentTheme.themeName);
+                backgroundBitmap = BitmapFactory.decodeResource(getResources(), backgroundResId);
+
+                // Load collectible bitmap
+                int collectibleResId = getCollectibleResourceForTheme(currentTheme.themeName);
+                collectibleBitmap = BitmapFactory.decodeResource(getResources(), collectibleResId);
+            } catch (Exception e) {
+                Log.e("GameView", "Error loading theme resources: " + e.getMessage());
+            }
+        }
+    }
+
+    // Helper method to get background resource based on theme
+    private int getBackgroundResourceForTheme(String themeName) {
+        switch(themeName) {
+            case "Classic":
+                return R.drawable.bg_classic;
+            case "Space":
+                return R.drawable.bg_space;
+            case "Underwater":
+                return R.drawable.bg_underwater;
+            case "Lava":
+                return R.drawable.bg_lava;
+            case "Forest":
+                return R.drawable.bg_forest;
+            default:
+                return R.drawable.bg_classic;
+        }
+    }
+
+    // Helper method to get collectible resource based on theme
+    private int getCollectibleResourceForTheme(String themeName) {
+        switch(themeName) {
+            case "Classic":
+                return R.drawable.collectible_classic;
+            case "Space":
+                return R.drawable.collectible_space;
+            case "Underwater":
+                return R.drawable.collectible_underwater;
+            case "Lava":
+                return R.drawable.collectible_lava;
+            case "Forest":
+                return R.drawable.collectible_forest;
+            default:
+                return R.drawable.collectible_classic;
+        }
     }
 
     @Override
@@ -77,6 +158,12 @@ public class GameView extends SurfaceView implements Runnable {
     private void setupGame() {
         if (!isSetup && screenWidth > 0 && screenHeight > 0) {
             player = new Player(getContext());
+
+            // If theme is already set, update player bitmap
+            if (currentTheme != null) {
+                player.updatePlayerBitmap(getContext(), currentTheme.themeName);
+            }
+
             Log.d("GameView", "Player created with size: " + player.getWidth() + "x" + player.getHeight());
 
             // Load high score
@@ -86,10 +173,19 @@ public class GameView extends SurfaceView implements Runnable {
             int levelWidth = screenWidth * 2;  // Make level 2x screen width
             int levelHeight = screenHeight * 2; // Make level 2x screen height
 
+            // If theme wasn't set externally, set the initial theme
+            if (currentTheme == null) {
+                currentTheme = LevelTheme.getThemeForLevel(1);
+                loadThemeResources();
+            }
+
             currentLevel = new Level(1, getContext(), levelWidth, levelHeight);
 
-            // Set the initial theme
-            currentTheme = LevelTheme.getThemeForLevel(1);
+            // Get collectibles from the level
+            collectibles = currentLevel.getCollectibles();
+
+            // Get obstacles from the level
+            obstacles = currentLevel.getObstacles();
 
             // Start music for first level
             musicManager.playMusicForTheme(0);
@@ -103,13 +199,21 @@ public class GameView extends SurfaceView implements Runnable {
     }
 
     private void updateCamera() {
-        // Center camera on player
-        cameraX = player.getX() + player.getWidth()/2 - (float) screenWidth /2;
-        cameraY = player.getY() + player.getHeight()/2 - (float) screenHeight /2;
+        // Center camera on player with some lookahead in the direction of movement
+        float lookAheadX = player.getVelocityX() * 3; // Look ahead based on velocity
+        float lookAheadY = player.getVelocityY() * 3;
 
-        // Keep camera within level bounds
-        cameraX = Math.max(0, Math.min(cameraX, currentLevel.getLevelWidth() - screenWidth));
-        cameraY = Math.max(0, Math.min(cameraY, currentLevel.getLevelHeight() - screenHeight));
+        // Limit lookahead to reasonable values
+        lookAheadX = Math.max(-100, Math.min(100, lookAheadX));
+        lookAheadY = Math.max(-100, Math.min(100, lookAheadY));
+
+        cameraX = player.getX() + player.getWidth()/2 - (float) screenWidth /2 + lookAheadX;
+        cameraY = player.getY() + player.getHeight()/2 - (float) screenHeight /2 + lookAheadY;
+
+        // Keep camera within level bounds with some margin
+        float margin = 100; // Add margin to prevent player from disappearing
+        cameraX = Math.max(-margin, Math.min(cameraX, currentLevel.getLevelWidth() - screenWidth + margin));
+        cameraY = Math.max(-margin, Math.min(cameraY, currentLevel.getLevelHeight() - screenHeight + margin));
     }
 
     @Override
@@ -129,6 +233,12 @@ public class GameView extends SurfaceView implements Runnable {
     private void update() {
         player.update(currentGravity);
         currentLevel.checkCollisions(player);
+
+        // Update obstacles (if they have movement)
+        for (Obstacle obstacle : obstacles) {
+            obstacle.update();
+        }
+
         updateCamera();
 
         // Check if level is completed
@@ -146,8 +256,20 @@ public class GameView extends SurfaceView implements Runnable {
             int nextLevel = currentLevel.getLevelNumber() + 1;
             currentLevel = new Level(nextLevel, getContext(), currentLevel.getLevelWidth(), currentLevel.getLevelHeight());
 
+            // Get collectibles from the new level
+            collectibles = currentLevel.getCollectibles();
+
+            // Get obstacles from the new level
+            obstacles = currentLevel.getObstacles();
+
             // Update the theme for the new level
             currentTheme = LevelTheme.getThemeForLevel(nextLevel);
+
+            // Load new theme resources
+            loadThemeResources();
+
+            // Update player bitmap for the new theme
+            player.updatePlayerBitmap(getContext(), currentTheme.themeName);
 
             // Start music for new theme
             int themeIndex = (nextLevel - 1) % LevelTheme.getThemes().length;
@@ -180,8 +302,15 @@ public class GameView extends SurfaceView implements Runnable {
             Canvas canvas = holder.lockCanvas();
             if (canvas != null) {
                 try {
-                    // Draw background with theme color
-                    canvas.drawColor(currentTheme.backgroundColor);
+                    // Draw background with theme bitmap or color
+                    if (backgroundBitmap != null) {
+                        // Scale the background to fill the screen
+                        canvas.drawBitmap(backgroundBitmap, null,
+                                new android.graphics.Rect(0, 0, screenWidth, screenHeight), null);
+                    } else {
+                        // Fallback to color if bitmap is not available
+                        canvas.drawColor(currentTheme.backgroundColor);
+                    }
 
                     // Save canvas state before translating
                     canvas.save();
@@ -189,10 +318,50 @@ public class GameView extends SurfaceView implements Runnable {
                     // Apply camera translation
                     canvas.translate(-cameraX, -cameraY);
 
-                    // Draw level elements with theme colors
-                    currentLevel.draw(canvas, paint, currentTheme);
+                    // Draw obstacles
+                    for (Obstacle obstacle : obstacles) {
+                        // Let the obstacle draw itself (it has its own bitmap)
+                        obstacle.draw(canvas);
 
-                    // Draw player with theme color (the Player class ignores the color)
+                        // Debug: Draw a more accurate collision box
+                        paint.setColor(Color.RED);
+                        paint.setStyle(Paint.Style.STROKE);
+                        paint.setStrokeWidth(2);
+
+                        // These values should match those in the isColliding method
+                        float collisionX = obstacle.getX() + obstacle.getWidth() * 0.1f;
+                        float collisionY = obstacle.getY() + obstacle.getHeight() * 0.2f;
+                        float collisionWidth = obstacle.getWidth() * 0.8f;
+                        float collisionHeight = obstacle.getHeight() * 0.6f;
+
+                        canvas.drawRect(collisionX, collisionY,
+                                collisionX + collisionWidth,
+                                collisionY + collisionHeight,
+                                paint);
+
+                        paint.setStyle(Paint.Style.FILL);
+                        paint.setStrokeWidth(1);
+                    }
+
+                    // Draw collectibles
+                    for (Level.Collectible collectible : collectibles) {
+                        if (!collectible.isCollected()) {
+                            if (collectibleBitmap != null) {
+                                // Draw collectible with bitmap
+                                int size = 40; // Size of collectible
+                                canvas.drawBitmap(collectibleBitmap,
+                                        collectible.getX() - size/2,
+                                        collectible.getY() - size/2, paint);
+                            } else {
+                                // Fallback to circle if bitmap is not available
+                                paint.setColor(currentTheme.collectibleColor);
+                                canvas.drawCircle(collectible.getX(), collectible.getY(),
+                                        collectible.getRadius(), paint);
+                            }
+                        }
+                    }
+
+                    // Draw player
                     player.draw(canvas, paint, currentTheme.playerColor);
 
                     // Debug: Draw a reference point at player position for clarity

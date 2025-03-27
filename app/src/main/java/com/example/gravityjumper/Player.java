@@ -1,4 +1,4 @@
-// C:/Users/user/AndroidStudioProjects/GravityJumper/app/src/main/java/com/example/gravityjumper/Player.java
+// Player.java
 package com.example.gravityjumper;
 
 import android.content.Context;
@@ -30,14 +30,18 @@ public class Player {
     private float jiggleIntensity = 0;
     private float rotation = 0;
 
+    // Animation speeds
+    private final float SQUASH_RECOVERY_SPEED = 0.1f;
+    private final float JIGGLE_DECAY = 0.9f;
+
     public Player(Context context) {
         try {
-            // Load the player image from resources
-            originalBitmap = BitmapFactory.decodeResource(context.getResources(), R.drawable.player);
+            // Load the default player image (classic theme)
+            originalBitmap = BitmapFactory.decodeResource(context.getResources(), R.drawable.player_classic);
 
             if (originalBitmap != null) {
                 // Scale the bitmap to be larger
-                originalBitmap = Bitmap.createScaledBitmap(originalBitmap, 100, 100, true);
+                originalBitmap = Bitmap.createScaledBitmap(originalBitmap, 150, 150, true);
                 bitmap = originalBitmap;
 
                 width = bitmap.getWidth();
@@ -54,8 +58,8 @@ public class Player {
 
         // Set default size if bitmap fails to load
         if (bitmap == null) {
-            width = 100;
-            height = 100;
+            width = 150;
+            height = 150;
         }
 
         x = 100;
@@ -65,6 +69,53 @@ public class Player {
         boundingBox = new RectF(x, y, x + width, y + height);
     }
 
+    // Add method to update player bitmap based on theme
+    public void updatePlayerBitmap(Context context, String themeName) {
+        int resourceId;
+
+        // Select the appropriate player image based on theme
+        switch(themeName) {
+            case "Classic":
+                resourceId = R.drawable.player_classic;
+                break;
+            case "Space":
+                resourceId = R.drawable.player_space;
+                break;
+            case "Underwater":
+                resourceId = R.drawable.player_underwater;
+                break;
+            case "Lava":
+                resourceId = R.drawable.player_lava;
+                break;
+            case "Forest":
+                resourceId = R.drawable.player_forest;
+                break;
+            default:
+                resourceId = R.drawable.player_classic;
+                break;
+        }
+
+        try {
+            // Load the themed player image
+            originalBitmap = BitmapFactory.decodeResource(context.getResources(), resourceId);
+
+            if (originalBitmap != null) {
+                // Scale the bitmap to be larger - increase these values
+                originalBitmap = Bitmap.createScaledBitmap(originalBitmap, 150, 150, true);
+                bitmap = originalBitmap;
+
+                width = bitmap.getWidth();
+                height = bitmap.getHeight();
+                Log.d("Player", "Themed bitmap loaded successfully: " + width + "x" + height);
+            }
+        } catch (Exception e) {
+            Log.e("Player", "Failed to load themed player bitmap: " + e.getMessage());
+        }
+    }
+
+
+
+    // Player.java - update the update method
     public void update(GameView.GravityDirection gravity) {
         // Apply gravity based on current direction
         // Adjust as needed
@@ -92,12 +143,19 @@ public class Player {
         velocityX *= 0.95f; // More drag (was 0.98f)
         velocityY *= 0.95f; // More drag (was 0.98f)
 
+        // Limit maximum velocity to prevent tunneling through obstacles
+        float MAX_VELOCITY = 15.0f;
+        velocityX = Math.max(-MAX_VELOCITY, Math.min(MAX_VELOCITY, velocityX));
+        velocityY = Math.max(-MAX_VELOCITY, Math.min(MAX_VELOCITY, velocityY));
+
         // Update bounding box for collision detection
         boundingBox.set(x, y, x + width, y + height);
 
         // Update blob animation effects
         updateBlobAnimation(gravity);
     }
+
+
 
     private void updateBlobAnimation(GameView.GravityDirection gravity) {
         // Calculate movement speed for stretch effect
@@ -122,8 +180,6 @@ public class Player {
         }
 
         // Smoothly animate toward target scale
-        // Animation speeds
-        float SQUASH_RECOVERY_SPEED = 0.1f;
         scaleX += (targetScaleX - scaleX) * SQUASH_RECOVERY_SPEED;
         scaleY += (targetScaleY - scaleY) * SQUASH_RECOVERY_SPEED;
 
@@ -135,7 +191,6 @@ public class Player {
             rotation = (float) Math.sin(jiggleTimer) * jiggleIntensity;
 
             // Decay jiggle intensity
-            float JIGGLE_DECAY = 0.9f;
             jiggleIntensity *= JIGGLE_DECAY;
 
             // Stop jiggling when intensity is very low
@@ -167,6 +222,8 @@ public class Player {
                 originalBitmap.getWidth(), originalBitmap.getHeight(), matrix, true);
     }
 
+
+
     public void draw(Canvas canvas, Paint paint, int playerColor) {
         // Ignore the playerColor parameter and draw with original appearance
         if (bitmap != null) {
@@ -186,9 +243,11 @@ public class Player {
         }
     }
 
+
+
     // Collision response methods with jiggle effect - less bouncy
     public void bounceX() {
-        velocityX = -velocityX * 0.6f; // Less bouncy (was 0.8f)
+        velocityX = -velocityX * 0.5f; // Less bouncy (was 0.6f)
         startJiggle();
 
         // Squash horizontally on impact
@@ -197,7 +256,7 @@ public class Player {
     }
 
     public void bounceY() {
-        velocityY = -velocityY * 0.6f; // Less bouncy (was 0.8f)
+        velocityY = -velocityY * 0.3f; // Even less bouncy (was 0.6f)
         startJiggle();
 
         // Squash vertically on impact
@@ -210,6 +269,8 @@ public class Player {
         jiggleTimer = 0;
         jiggleIntensity = 15.0f; // Starting rotation amount in degrees
     }
+
+
 
     // Getters and setters for position
     public float getX() { return x; }
@@ -230,7 +291,13 @@ public class Player {
     public void setVelocityY(float velocityY) { this.velocityY = velocityY; }
 
     // Getters for dimensions
-    public float getWidth() { return width; }
-    public float getHeight() { return height; }
+    public int getWidth() { return width; }
+    public int getHeight() { return height; }
     public RectF getBoundingBox() { return boundingBox; }
+
+    public void resolveCollision(float newX, float newY) {
+        // Set new position
+        this.x = newX;
+        this.y = newY;
+    }
 }

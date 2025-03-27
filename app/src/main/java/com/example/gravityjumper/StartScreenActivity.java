@@ -1,5 +1,4 @@
-// C:/Users/user/AndroidStudioProjects/GravityJumper/app/src/main/java/com/example/gravityjumper/StartScreenActivity.java
-
+// StartScreenActivity.java
 package com.example.gravityjumper;
 
 import android.content.Intent;
@@ -8,11 +7,8 @@ import android.view.View;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.widget.Button;
-import android.view.animation.Animation;
-import android.view.animation.AnimationUtils;
 import android.widget.ImageView;
 import android.widget.TextView;
-
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.view.WindowCompat;
 
@@ -21,34 +17,34 @@ public class StartScreenActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        // Hide the action bar for fullscreen experience
-        if (getSupportActionBar() != null) {
-            getSupportActionBar().hide();
-        }
-
-        // Set immersive fullscreen mode
-        hideSystemUI();
-
         setContentView(R.layout.activity_start_screen);
 
-        // Set up button listeners
-        Button playButton = findViewById(R.id.playButton);
-        Button exitButton = findViewById(R.id.exitButton);
-        TextView titleText = findViewById(R.id.titleText);
+        // Hide system UI for immersive experience
+        hideSystemUI();
+
+        // Get the default theme (first theme)
+        LevelTheme defaultTheme = LevelTheme.getThemeForLevel(1);
+
+        // Set the player image based on the theme
         ImageView logoImage = findViewById(R.id.logoImage);
 
-        // Create animations
-        Animation pulse = AnimationUtils.loadAnimation(this, android.R.anim.fade_in);
-        pulse.setDuration(2000);
-        pulse.setRepeatMode(Animation.REVERSE);
-        pulse.setRepeatCount(Animation.INFINITE);
+        // Set the appropriate player image based on theme
+        int playerResourceId = getPlayerResourceForTheme(defaultTheme.themeName);
+        logoImage.setImageResource(playerResourceId);
 
-        // Apply animation to logo
-        logoImage.startAnimation(pulse);
+        // Set background color based on theme
+        View rootView = findViewById(android.R.id.content);
+        rootView.setBackgroundColor(defaultTheme.backgroundColor);
 
-        // Play button starts the game
-        playButton.setOnClickListener(new View.OnClickListener() {
+        // Set text color for title and version based on theme
+        TextView titleText = findViewById(R.id.titleText);
+        TextView versionText = findViewById(R.id.versionText);
+        titleText.setTextColor(defaultTheme.textColor);
+        versionText.setTextColor(defaultTheme.textColor);
+
+        // Setup start button
+        Button startButton = findViewById(R.id.startButton);
+        startButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 Intent intent = new Intent(StartScreenActivity.this, MainActivity.class);
@@ -56,40 +52,50 @@ public class StartScreenActivity extends AppCompatActivity {
             }
         });
 
-        // Exit button closes the app
-        exitButton.setOnClickListener(new View.OnClickListener() {
+        // Setup settings button
+        Button settingsButton = findViewById(R.id.settingsButton);
+        settingsButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                finish();
+                // Launch settings activity when implemented
+                // Intent intent = new Intent(StartScreenActivity.this, SettingsActivity.class);
+                // startActivity(intent);
             }
         });
     }
 
-    private void hideSystemUI() {
-        {
-            // For Android 12 (API 31) and above
-            WindowInsetsController controller = getWindow().getInsetsController();
-            if (controller != null) {
-                // Use WindowCompat instead of the deprecated setDecorFitsSystemWindows
-                WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
-                controller.hide(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
-                controller.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
-            }
+    // Helper method to get the correct player resource based on theme name
+    private int getPlayerResourceForTheme(String themeName) {
+        switch(themeName) {
+            case "Classic":
+                return R.drawable.player_classic;
+            case "Space":
+                return R.drawable.player_space;
+            case "Underwater":
+                return R.drawable.player_underwater;
+            case "Lava":
+                return R.drawable.player_lava;
+            case "Forest":
+                return R.drawable.player_forest;
+            default:
+                // Fallback to app icon if theme doesn't match
+                return R.mipmap.ic_launcher;
         }
     }
 
-    @Override
-    public void onWindowFocusChanged(boolean hasFocus) {
-        super.onWindowFocusChanged(hasFocus);
-        if (hasFocus) {
-            hideSystemUI();
+    private void hideSystemUI() {
+        // Use WindowCompat instead of the deprecated setDecorFitsSystemWindows
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+        WindowInsetsController controller = getWindow().getInsetsController();
+        if (controller != null) {
+            controller.hide(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
+            controller.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
         }
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        // Re-hide system UI when resuming
         hideSystemUI();
     }
 }

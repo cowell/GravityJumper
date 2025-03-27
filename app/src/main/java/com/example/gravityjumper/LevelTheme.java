@@ -4,76 +4,41 @@ package com.example.gravityjumper;
 import android.graphics.Color;
 
 public class LevelTheme {
+    // Theme properties
+    public final String themeName;
     public final int backgroundColor;
-    public final int platformColor;
     public final int playerColor;
+    public final int platformColor;
     public final int collectibleColor;
     public final int textColor;
-    public final String themeName;
 
-    public LevelTheme(String themeName, int backgroundColor, int platformColor,
-                      int playerColor, int collectibleColor, int textColor) {
+
+    // Predefined themes
+    // Define available themes
+    public static final LevelTheme[] THEMES = {
+            new LevelTheme("Classic", Color.BLACK, Color.WHITE, Color.GRAY, Color.YELLOW, Color.WHITE),
+            new LevelTheme("Space", Color.rgb(0, 0, 50), Color.CYAN, Color.rgb(100, 100, 150), Color.YELLOW, Color.CYAN),
+            new LevelTheme("Underwater", Color.rgb(0, 50, 100), Color.rgb(0, 255, 200), Color.rgb(0, 100, 150), Color.rgb(255, 215, 0), Color.WHITE),
+            new LevelTheme("Lava", Color.rgb(50, 0, 0), Color.rgb(255, 100, 0), Color.rgb(100, 50, 0), Color.rgb(255, 255, 0), Color.rgb(255, 200, 0)),
+            new LevelTheme("Forest", Color.rgb(0, 50, 0), Color.rgb(0, 200, 0), Color.rgb(100, 50, 0), Color.rgb(255, 0, 100), Color.rgb(200, 255, 200))
+    };
+
+    public LevelTheme(String themeName, int backgroundColor, int playerColor, int platformColor, int collectibleColor, int textColor) {
         this.themeName = themeName;
         this.backgroundColor = backgroundColor;
-        this.platformColor = platformColor;
         this.playerColor = playerColor;
+        this.platformColor = platformColor;
         this.collectibleColor = collectibleColor;
         this.textColor = textColor;
     }
-
-    // Predefined themes
-    private static final LevelTheme[] THEMES = {
-            // Classic theme
-            new LevelTheme(
-                    "Classic",
-                    Color.BLACK,
-                    Color.GRAY,
-                    Color.BLUE,
-                    Color.YELLOW,
-                    Color.WHITE
-            ),
-            // Desert theme
-            new LevelTheme(
-                    "Desert",
-                    Color.rgb(255, 222, 173), // Sandy background
-                    Color.rgb(205, 133, 63),  // Brown platforms
-                    Color.rgb(255, 140, 0),   // Orange player
-                    Color.rgb(255, 215, 0),   // Gold collectibles
-                    Color.rgb(139, 69, 19)    // Brown text
-            ),
-            // Ice theme
-            new LevelTheme(
-                    "Ice",
-                    Color.rgb(220, 240, 255), // Ice blue background
-                    Color.rgb(176, 196, 222), // Light blue platforms
-                    Color.rgb(30, 144, 255),  // Dodger blue player
-                    Color.rgb(255, 255, 255), // White collectibles
-                    Color.rgb(25, 25, 112)    // Dark blue text
-            ),
-            // Forest theme
-            new LevelTheme(
-                    "Forest",
-                    Color.rgb(34, 139, 34),   // Forest green background
-                    Color.rgb(139, 69, 19),   // Brown platforms
-                    Color.rgb(255, 99, 71),   // Tomato red player
-                    Color.rgb(255, 215, 0),   // Gold collectibles
-                    Color.WHITE               // White text
-            ),
-            // Space theme
-            new LevelTheme(
-                    "Space",
-                    Color.rgb(25, 25, 112),   // Midnight blue background
-                    Color.rgb(75, 0, 130),    // Indigo platforms
-                    Color.rgb(0, 255, 255),   // Cyan player
-                    Color.rgb(255, 255, 255), // White collectibles
-                    Color.rgb(255, 255, 224)  // Light yellow text
-            )
-    };
+    // Get a theme based on level number (cycles through available themes)
+    public static LevelTheme getThemeForLevel(int levelNumber) {
+        // Adjust level number to be 1-based index into themes array
+        int themeIndex = (levelNumber - 1) % THEMES.length;
+        return THEMES[themeIndex];
+    }
+    // Get all available themes
     public static LevelTheme[] getThemes() {
         return THEMES;
-    }
-    public static LevelTheme getThemeForLevel(int level) {
-        // Use modulo to cycle through themes
-        return THEMES[(level - 1) % THEMES.length];
     }
 }

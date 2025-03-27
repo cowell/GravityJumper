@@ -1,7 +1,9 @@
-// C:/Users/user/AndroidStudioProjects/GravityJumper/app/src/main/java/com/example/gravityjumper/Level.java
+// Level.java
 package com.example.gravityjumper;
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -13,7 +15,7 @@ import java.util.Random;
 
 public class Level {
     private final int levelNumber;
-    private final List<Platform> platforms;
+    private final List<Obstacle> obstacles;
     private final List<Collectible> collectibles;
     private RectF goalArea;
     private final int levelWidth;
@@ -35,7 +37,7 @@ public class Level {
         this.levelWidth = levelWidth;
         this.levelHeight = levelHeight;
 
-        platforms = new ArrayList<>();
+        obstacles = new ArrayList<>();
         collectibles = new ArrayList<>();
 
         generateLevel();
@@ -48,6 +50,11 @@ public class Level {
 
     public void resetScore() {
         score = 0;
+    }
+
+    // Method to decrement score
+    public void decrementScore(int amount) {
+        score = Math.max(0, score - amount);
     }
 
     // This method returns the level number
@@ -64,45 +71,135 @@ public class Level {
         return levelHeight;
     }
 
+    // Getter for collectibles
+    public List<Collectible> getCollectibles() {
+        return collectibles;
+    }
+
+    // Getter for obstacles
+    public List<Obstacle> getObstacles() {
+        return obstacles;
+    }
+
     private void generateLevel() {
-        // Add boundary walls
-        platforms.add(new Platform(0, 0, levelWidth, 50)); // Top
-        platforms.add(new Platform(0, levelHeight - 50, levelWidth, 50)); // Bottom
-        platforms.add(new Platform(0, 0, 50, levelHeight)); // Left
-        platforms.add(new Platform(levelWidth - 50, 0, 50, levelHeight)); // Right
+        // Get current theme for this level
+        LevelTheme theme = LevelTheme.getThemeForLevel(levelNumber);
 
-        // Add platforms based on level number (more platforms for higher levels)
-        Random random = new Random(levelNumber); // Use level as seed for consistent generation
-        int platformCount = 5 + levelNumber;
-
-        for (int i = 0; i < platformCount; i++) {
-            int width = random.nextInt(300) + 100;
-            int height = random.nextInt(30) + 20;
-            int x = random.nextInt(levelWidth - width - 200) + 100; // More padding
-            int y = random.nextInt(levelHeight - height - 200) + 100; // More padding
-
-            platforms.add(new Platform(x, y, width, height));
+        // Create obstacle bitmap from resource
+        Bitmap obstacleBitmap = null;
+        try {
+            // Load the appropriate obstacle bitmap based on theme
+            int obstacleResourceId = getObstacleResourceForTheme(theme.themeName);
+            obstacleBitmap = BitmapFactory.decodeResource(context.getResources(), obstacleResourceId);
+        } catch (Exception e) {
+            // If bitmap loading fails, obstacles will be drawn with colors instead
         }
 
-        // Add collectibles with a safe distance from platforms
+        // Add boundary walls as obstacles
+        float speed = 0; // Stationary obstacles for boundaries
+
+        // Top boundary
+        obstacles.add(new Obstacle(0, 0, speed, obstacleBitmap) {
+            @Override
+            public boolean isColliding(float playerX, float playerY, int playerWidth, int playerHeight) {
+                return new RectF(playerX, playerY, playerX + playerWidth, playerY + playerHeight)
+                        .intersect(new RectF(getX(), getY(), getX() + getLevelWidth(), getY() + 50));
+            }
+        });
+
+        // Bottom boundary
+        obstacles.add(new Obstacle(0, levelHeight - 50, speed, obstacleBitmap) {
+            @Override
+            public boolean isColliding(float playerX, float playerY, int playerWidth, int playerHeight) {
+                return new RectF(playerX, playerY, playerX + playerWidth, playerY + playerHeight)
+                        .intersect(new RectF(getX(), getY(), getX() + getLevelWidth(), getY() + 50));
+            }
+        });
+
+        // Left boundary
+        obstacles.add(new Obstacle(0, 0, speed, obstacleBitmap) {
+            @Override
+            public boolean isColliding(float playerX, float playerY, int playerWidth, int playerHeight) {
+                return new RectF(playerX, playerY, playerX + playerWidth, playerY + playerHeight)
+                        .intersect(new RectF(getX(), getY(), getX() + 50, getY() + getLevelHeight()));
+            }
+        });
+
+        // Right boundary
+        obstacles.add(new Obstacle(levelWidth - 50, 0, speed, obstacleBitmap) {
+            @Override
+            public boolean isColliding(float playerX, float playerY, int playerWidth, int playerHeight) {
+                return new RectF(playerX, playerY, playerX + playerWidth, playerY + playerHeight)
+                        .intersect(new RectF(getX(), getY(), getX() + 50, getY() + getLevelHeight()));
+            }
+        });
+
+        // Add obstacles based on level number (more obstacles for higher levels)
+        Random random = new Random(levelNumber); // Use level as seed for consistent generation
+        int obstacleCount = 5 + levelNumber;
+
+        for (int i = 0; i < obstacleCount; i++) {
+            // Make obstacles smaller to match their visual appearance
+            int width = random.nextInt(200) + 100; // Reduced from 300
+            int height = random.nextInt(20) + 20;  // Reduced from 30
+            int x = random.nextInt(levelWidth - width - 200) + 100;
+            int y = random.nextInt(levelHeight - height - 200) + 100;
+
+            // Create a custom obstacle with specific dimensions
+            final Obstacle obstacle = new Obstacle(x, y, 0, obstacleBitmap) {
+                private final int customWidth = width;
+                private final int customHeight = height;
+
+                @Override
+                public int getWidth() {
+                    return customWidth;
+                }
+
+                @Override
+                public int getHeight() {
+                    return customHeight;
+                }
+
+                @Override
+                public boolean isColliding(float playerX, float playerY, int playerWidth, int playerHeight) {
+                    // For the floating platform image, adjust the collision box to match the visible part
+                    // These values need to be tuned based on your specific obstacle image
+                    float collisionX = getX() + customWidth * 0.1f;  // 10% inset from left
+                    float collisionY = getY() + customHeight * 0.2f; // 20% inset from top
+                    float collisionWidth = customWidth * 0.8f;       // 80% of original width
+                    float collisionHeight = customHeight * 0.6f;     // 60% of original height
+
+                    return new RectF(playerX, playerY, playerX + playerWidth, playerY + playerHeight)
+                            .intersect(new RectF(collisionX, collisionY,
+                                    collisionX + collisionWidth,
+                                    collisionY + collisionHeight));
+                }
+            };
+
+            obstacles.add(obstacle);
+        }
+
+        // Add collectibles with a safe distance from obstacles
         int collectibleCount = 3;
-        int safeDistance = 120; // Increase minimum distance from platforms
+        int safeDistance = 120; // Increase minimum distance from obstacles
 
         for (int i = 0; i < collectibleCount; i++) {
             int x = random.nextInt(levelWidth - 300) + 150; // More padding from walls
             int y = random.nextInt(levelHeight - 300) + 150; // More padding from walls
 
-            // Check if too close to any platform and reposition if needed
+            // Check if too close to any obstacle and reposition if needed
             boolean validPosition = false;
             int attempts = 0;
 
             while (!validPosition && attempts < 15) {
                 validPosition = true;
 
-                for (Platform platform : platforms) {
-                    RectF rect = platform.getRect();
+                for (Obstacle obstacle : obstacles) {
+                    RectF rect = new RectF(obstacle.getX(), obstacle.getY(),
+                            obstacle.getX() + obstacle.getWidth(),
+                            obstacle.getY() + obstacle.getHeight());
 
-                    // Check if collectible is too close to this platform
+                    // Check if collectible is too close to this obstacle
                     if (x < rect.right + safeDistance && x > rect.left - safeDistance &&
                             y < rect.bottom + safeDistance && y > rect.top - safeDistance) {
                         // Too close, mark as invalid position
@@ -133,9 +230,12 @@ public class Level {
             goalX = random.nextInt(levelWidth - 300) + 150;
             goalY = random.nextInt(levelHeight - 300) + 150;
 
-            // Check if too close to any platform
-            for (Platform platform : platforms) {
-                RectF rect = platform.getRect();
+            // Check if too close to any obstacle
+            for (Obstacle obstacle : obstacles) {
+                RectF rect = new RectF(obstacle.getX(), obstacle.getY(),
+                        obstacle.getX() + obstacle.getWidth(),
+                        obstacle.getY() + obstacle.getHeight());
+
                 if (goalX < rect.right + goalSafeDistance && goalX + goalSize > rect.left - goalSafeDistance &&
                         goalY < rect.bottom + goalSafeDistance && goalY + goalSize > rect.top - goalSafeDistance) {
                     validGoalPosition = false;
@@ -158,15 +258,35 @@ public class Level {
         goalArea = new RectF(goalX, goalY, goalX + goalSize, goalY + goalSize);
     }
 
+    // Helper method to get the correct obstacle resource based on theme name
+    private int getObstacleResourceForTheme(String themeName) {
+        switch(themeName) {
+            case "Classic":
+                return R.drawable.obstacle_classic;
+            case "Space":
+                return R.drawable.obstacle_space;
+            case "Underwater":
+                return R.drawable.obstacle_underwater;
+            case "Lava":
+                return R.drawable.obstacle_lava;
+            case "Forest":
+                return R.drawable.obstacle_forest;
+            default:
+                return R.drawable.obstacle_classic;
+        }
+    }
+
     public void draw(Canvas canvas, Paint paint, LevelTheme theme) {
         // Save original paint properties
         int originalColor = paint.getColor();
         int originalAlpha = paint.getAlpha();
 
-        // Draw platforms with theme color
+        // Draw obstacles with theme color
         paint.setColor(theme.platformColor);
-        for (Platform platform : platforms) {
-            canvas.drawRect(platform.getRect(), paint);
+        for (Obstacle obstacle : obstacles) {
+            canvas.drawRect(new RectF(obstacle.getX(), obstacle.getY(),
+                    obstacle.getX() + obstacle.getWidth(),
+                    obstacle.getY() + obstacle.getHeight()), paint);
         }
 
         // Draw collectibles - larger and with glow effect
@@ -203,18 +323,46 @@ public class Level {
     }
 
     public void checkCollisions(Player player) {
-        // ONLY check platform collisions for obstacle collision
-        for (Platform platform : platforms) {
-            if (platform.intersects(player)) {
-                resolveCollision(platform, player);
+        // First check level boundaries
+        float playerRight = player.getX() + player.getWidth();
+        float playerBottom = player.getY() + player.getHeight();
+
+        // Left boundary
+        if (player.getX() < 0) {
+            player.setX(0);
+            player.bounceX();
+        }
+
+        // Right boundary
+        if (playerRight > levelWidth) {
+            player.setX(levelWidth - player.getWidth());
+            player.bounceX();
+        }
+
+        // Top boundary
+        if (player.getY() < 0) {
+            player.setY(0);
+            player.bounceY();
+        }
+
+        // Bottom boundary
+        if (playerBottom > levelHeight) {
+            player.setY(levelHeight - player.getHeight());
+            player.bounceY();
+        }
+
+        // Check obstacle collisions
+        for (Obstacle obstacle : obstacles) {
+            if (obstacle.isColliding(player.getX(), player.getY(), player.getWidth(), player.getHeight())) {
+                resolveCollision(obstacle, player);
             }
         }
 
         // Collectibles are just pickups, not obstacles
         for (Collectible collectible : collectibles) {
             if (collectible.isNotCollected()) {
-                float distX = collectible.getX() - (player.getX() + player.getWidth()/2);
-                float distY = collectible.getY() - (player.getY() + player.getHeight()/2);
+                float distX = collectible.getX() - (player.getX() + (float) player.getWidth() /2);
+                float distY = collectible.getY() - (player.getY() + (float) player.getHeight() /2);
                 float distance = (float) Math.sqrt(distX * distX + distY * distY);
 
                 if (distance < 80) { // Large collection radius
@@ -254,34 +402,62 @@ public class Level {
         }
     }
 
-    private void resolveCollision(Platform platform, Player player) {
-        float playerRight = player.getX() + player.getWidth();
-        float playerBottom = player.getY() + player.getHeight();
-        float platformRight = platform.getRect().right;
-        float platformBottom = platform.getRect().bottom;
+    private void resolveCollision(Obstacle obstacle, Player player) {
+        // Get the bounds of both objects
+        RectF playerBounds = new RectF(player.getX(), player.getY(),
+                player.getX() + player.getWidth(),
+                player.getY() + player.getHeight());
 
-        // Calculate overlap on each side
-        float leftOverlap = playerRight - platform.getRect().left;
-        float rightOverlap = platformRight - player.getX();
-        float topOverlap = playerBottom - platform.getRect().top;
-        float bottomOverlap = platformBottom - player.getY();
+        // For the obstacle, use the adjusted collision bounds
+        float collisionX = obstacle.getX() + obstacle.getWidth() * 0.1f;
+        float collisionY = obstacle.getY() + obstacle.getHeight() * 0.2f;
+        float collisionWidth = obstacle.getWidth() * 0.8f;
+        float collisionHeight = obstacle.getHeight() * 0.6f;
 
-        // Find the smallest overlap
-        float minOverlap = Math.min(Math.min(leftOverlap, rightOverlap), Math.min(topOverlap, bottomOverlap));
+        RectF obstacleBounds = new RectF(collisionX, collisionY,
+                collisionX + collisionWidth,
+                collisionY + collisionHeight);
 
-        // Resolve based on smallest overlap
-        if (minOverlap == leftOverlap) {
-            player.setX(player.getX() - leftOverlap);
+        // Calculate the overlap in each direction
+        float overlapLeft = playerBounds.right - obstacleBounds.left;
+        float overlapRight = obstacleBounds.right - playerBounds.left;
+        float overlapTop = playerBounds.bottom - obstacleBounds.top;
+        float overlapBottom = obstacleBounds.bottom - playerBounds.top;
+
+        // Determine which side has the smallest overlap
+        boolean fromLeft = overlapLeft < overlapRight;
+        boolean fromTop = overlapTop < overlapBottom;
+
+        float minXOverlap = Math.min(overlapLeft, overlapRight);
+        float minYOverlap = Math.min(overlapTop, overlapBottom);
+
+        // Determine if collision is more horizontal or vertical
+        if (minXOverlap < minYOverlap) {
+            // Horizontal collision
+            if (fromLeft) {
+                // Collision from left side of obstacle
+                player.setX(obstacleBounds.left - player.getWidth());
+            } else {
+                // Collision from right side of obstacle
+                player.setX(obstacleBounds.right);
+            }
             player.bounceX();
-        } else if (minOverlap == rightOverlap) {
-            player.setX(player.getX() + rightOverlap);
-            player.bounceX();
-        } else if (minOverlap == topOverlap) {
-            player.setY(player.getY() - topOverlap);
-            player.bounceY();
-        } else if (minOverlap == bottomOverlap) {
-            player.setY(player.getY() + bottomOverlap);
-            player.bounceY();
+        } else {
+            // Vertical collision
+            if (fromTop) {
+                // Collision from top of obstacle (player is above)
+                player.setY(obstacleBounds.top - player.getHeight());
+                // Only bounce if moving downward
+                if (player.getVelocityY() > 0) {
+                    player.bounceY();
+                } else {
+                    player.setVelocityY(0); // Just stop if moving up
+                }
+            } else {
+                // Collision from bottom of obstacle (player is below)
+                player.setY(obstacleBounds.bottom);
+                player.bounceY();
+            }
         }
     }
 
@@ -289,26 +465,7 @@ public class Level {
         return completed;
     }
 
-    // Inner classes
-    public static class Platform {
-        private final RectF rect;
-
-        public Platform(float left, float top, float width, float height) {
-            rect = new RectF(left, top, left + width, top + height);
-        }
-
-        public RectF getRect() {
-            return rect;
-        }
-
-        public boolean intersects(Player player) {
-            RectF playerRect = new RectF(player.getX(), player.getY(),
-                    player.getX() + player.getWidth(),
-                    player.getY() + player.getHeight());
-            return RectF.intersects(rect, playerRect);
-        }
-    }
-
+    // Inner class for Collectible (kept from original)
     public static class Collectible {
         private final float x;
         private final float y;
