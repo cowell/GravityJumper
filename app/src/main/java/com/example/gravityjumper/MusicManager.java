@@ -9,7 +9,7 @@ import android.util.Log;
 public class MusicManager {
     private static MusicManager instance;
     private MediaPlayer mediaPlayer;
-    private Context context;
+    private final Context context;
     private boolean isMusicEnabled = true;
     private int currentMusicRes = -1;
 

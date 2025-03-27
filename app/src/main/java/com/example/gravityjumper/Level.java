@@ -12,18 +12,17 @@ import java.util.List;
 import java.util.Random;
 
 public class Level {
-    private int levelNumber;
-    private List<Platform> platforms;
-    private List<Collectible> collectibles;
+    private final int levelNumber;
+    private final List<Platform> platforms;
+    private final List<Collectible> collectibles;
     private RectF goalArea;
-    private int levelWidth, levelHeight;
+    private final int levelWidth;
+    private final int levelHeight;
     private boolean completed = false;
-    private Context context;
+    private final Context context;
 
     // New fields for scoring
     private int score = 0;
-    private int collectibleValue = 100; // Base points for collecting an item
-    private int levelCompletionBonus = 500; // Bonus for completing the level
 
     // Add overloaded constructor
     public Level(int levelNumber, Context context) {
@@ -146,8 +145,8 @@ public class Level {
 
             // Check if too close to any collectible
             for (Collectible collectible : collectibles) {
-                if (Math.hypot(collectible.getX() - (goalX + goalSize/2),
-                        collectible.getY() - (goalY + goalSize/2)) < goalSafeDistance) {
+                if (Math.hypot(collectible.getX() - (goalX + (double) goalSize /2),
+                        collectible.getY() - (goalY + (double) goalSize /2)) < goalSafeDistance) {
                     validGoalPosition = false;
                     break;
                 }
@@ -185,7 +184,7 @@ public class Level {
         }
 
         // Derive goal color from theme (green tint of player color)
-        int goalColor = blendColors(theme.playerColor, Color.GREEN, 0.5f);
+        int goalColor = blendColors(theme.playerColor);
         paint.setColor(goalColor);
         canvas.drawRect(goalArea, paint);
 
@@ -195,11 +194,11 @@ public class Level {
     }
 
     // Helper method to blend colors
-    private int blendColors(int color1, int color2, float ratio) {
-        final float inverseRatio = 1f - ratio;
-        float r = (Color.red(color1) * ratio) + (Color.red(color2) * inverseRatio);
-        float g = (Color.green(color1) * ratio) + (Color.green(color2) * inverseRatio);
-        float b = (Color.blue(color1) * ratio) + (Color.blue(color2) * inverseRatio);
+    private int blendColors(int color1) {
+        final float inverseRatio = 1f - (float) 0.5;
+        float r = (Color.red(color1) * (float) 0.5) + (Color.red(Color.GREEN) * inverseRatio);
+        float g = (Color.green(color1) * (float) 0.5) + (Color.green(Color.GREEN) * inverseRatio);
+        float b = (Color.blue(color1) * (float) 0.5) + (Color.blue(Color.GREEN) * inverseRatio);
         return Color.rgb((int) r, (int) g, (int) b);
     }
 
@@ -220,6 +219,8 @@ public class Level {
 
                 if (distance < 80) { // Large collection radius
                     collectible.collect();
+                    // Base points for collecting an item
+                    int collectibleValue = 100;
                     score += collectibleValue;
                     SoundManager.getInstance(context).playCollectSound();
                 }
@@ -243,6 +244,8 @@ public class Level {
             if (allCollected && !completed) {
                 completed = true;
                 // Award bonus points for completing the level
+                // Bonus for completing the level
+                int levelCompletionBonus = 500;
                 score += levelCompletionBonus;
                 // Apply level multiplier to make higher levels worth more
                 score += levelCompletionBonus * levelNumber;
@@ -288,7 +291,7 @@ public class Level {
 
     // Inner classes
     public static class Platform {
-        private RectF rect;
+        private final RectF rect;
 
         public Platform(float left, float top, float width, float height) {
             rect = new RectF(left, top, left + width, top + height);
@@ -307,7 +310,8 @@ public class Level {
     }
 
     public static class Collectible {
-        private float x, y;
+        private final float x;
+        private final float y;
         private boolean collected = false;
 
         public Collectible(float x, float y) {

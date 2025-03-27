@@ -16,10 +16,9 @@ public class Player {
     private Bitmap originalBitmap; // Store the original bitmap for transformations
     private float x, y;
     private float velocityX, velocityY;
-    private final float GRAVITY_FORCE = 0.5f; // Adjust as needed
     private int width = 100;  // Default size if bitmap fails to load
     private int height = 100;
-    private RectF boundingBox;
+    private final RectF boundingBox;
 
     // Squash and stretch variables
     private float scaleX = 1.0f;
@@ -30,10 +29,6 @@ public class Player {
     private boolean isJiggling = false;
     private float jiggleIntensity = 0;
     private float rotation = 0;
-
-    // Animation speeds
-    private final float SQUASH_RECOVERY_SPEED = 0.1f;
-    private final float JIGGLE_DECAY = 0.9f;
 
     public Player(Context context) {
         try {
@@ -72,6 +67,8 @@ public class Player {
 
     public void update(GameView.GravityDirection gravity) {
         // Apply gravity based on current direction
+        // Adjust as needed
+        float GRAVITY_FORCE = 0.5f;
         switch (gravity) {
             case DOWN:
                 velocityY += GRAVITY_FORCE;
@@ -125,6 +122,8 @@ public class Player {
         }
 
         // Smoothly animate toward target scale
+        // Animation speeds
+        float SQUASH_RECOVERY_SPEED = 0.1f;
         scaleX += (targetScaleX - scaleX) * SQUASH_RECOVERY_SPEED;
         scaleY += (targetScaleY - scaleY) * SQUASH_RECOVERY_SPEED;
 
@@ -136,6 +135,7 @@ public class Player {
             rotation = (float) Math.sin(jiggleTimer) * jiggleIntensity;
 
             // Decay jiggle intensity
+            float JIGGLE_DECAY = 0.9f;
             jiggleIntensity *= JIGGLE_DECAY;
 
             // Stop jiggling when intensity is very low

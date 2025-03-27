@@ -1,6 +1,7 @@
 // C:/Users/user/AndroidStudioProjects/GravityJumper/app/src/main/java/com/example/gravityjumper/GameView.java
 package com.example.gravityjumper;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Canvas;
@@ -96,15 +97,15 @@ public class GameView extends SurfaceView implements Runnable {
             isSetup = true;
 
             // Start the player near the center of the level
-            player.setX(levelWidth / 4);
-            player.setY(levelHeight / 4);
+            player.setX((float) levelWidth / 4);
+            player.setY((float) levelHeight / 4);
         }
     }
 
     private void updateCamera() {
         // Center camera on player
-        cameraX = player.getX() + player.getWidth()/2 - screenWidth/2;
-        cameraY = player.getY() + player.getHeight()/2 - screenHeight/2;
+        cameraX = player.getX() + player.getWidth()/2 - (float) screenWidth /2;
+        cameraY = player.getY() + player.getHeight()/2 - (float) screenHeight /2;
 
         // Keep camera within level bounds
         cameraX = Math.max(0, Math.min(cameraX, currentLevel.getLevelWidth() - screenWidth));
@@ -153,8 +154,8 @@ public class GameView extends SurfaceView implements Runnable {
             musicManager.playMusicForTheme(themeIndex);
 
             // Reset player position
-            player.setX(currentLevel.getLevelWidth() / 4);
-            player.setY(currentLevel.getLevelHeight() / 4);
+            player.setX((float) currentLevel.getLevelWidth() / 4);
+            player.setY((float) currentLevel.getLevelHeight() / 4);
             player.setVelocityX(0);
             player.setVelocityY(0);
         }
@@ -229,7 +230,7 @@ public class GameView extends SurfaceView implements Runnable {
                     paint.setColor(currentTheme.textColor);
                     paint.setStrokeWidth(5);
                     float arrowSize = 60;
-                    float centerX = screenWidth / 2;
+                    float centerX = (float) screenWidth / 2;
                     float centerY = screenHeight - 100;
 
                     // Draw arrow pointing in current gravity direction
@@ -268,7 +269,9 @@ public class GameView extends SurfaceView implements Runnable {
         try {
             Thread.sleep(17); // ~60fps
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            Log.e("GameView", "Thread interrupted during game loop", e);
+            // Optionally restore the interrupt status
+            Thread.currentThread().interrupt();
         }
     }
 
@@ -280,7 +283,7 @@ public class GameView extends SurfaceView implements Runnable {
                 gameThread.join();
             }
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            Log.e("GameView", "Thread interrupted during game loop", e);
         }
     }
 
@@ -319,6 +322,7 @@ public class GameView extends SurfaceView implements Runnable {
     }
 
     // Split the screen into quadrants for directional control
+    @SuppressLint("ClickableViewAccessibility")
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         if (event.getAction() == MotionEvent.ACTION_DOWN) {
@@ -327,15 +331,15 @@ public class GameView extends SurfaceView implements Runnable {
             float y = event.getY();
 
             // Left side = LEFT gravity
-            if (x < screenWidth / 2 && y > screenHeight / 4 && y < screenHeight * 3/4) {
+            if (x < (float) screenWidth / 2 && y > (float) screenHeight / 4 && y < (float) (screenHeight * 3) /4) {
                 setGravityDirection(GravityDirection.LEFT);
             }
             // Right side = RIGHT gravity
-            else if (x > screenWidth / 2 && y > screenHeight / 4 && y < screenHeight * 3/4) {
+            else if (x > (float) screenWidth / 2 && y > (float) screenHeight / 4 && y < (float) (screenHeight * 3) /4) {
                 setGravityDirection(GravityDirection.RIGHT);
             }
             // Top area = UP gravity
-            else if (y < screenHeight / 2) {
+            else if (y < (float) screenHeight / 2) {
                 setGravityDirection(GravityDirection.UP);
             }
             // Bottom area = DOWN gravity

@@ -10,11 +10,11 @@ import android.widget.Button;
 import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AlertDialog;
+import androidx.core.view.WindowCompat;
 
 public class MainActivity extends AppCompatActivity {
 
     private GameView gameView;
-    private Button flipGravityButton;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -31,7 +31,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         gameView = findViewById(R.id.gameView);
-        flipGravityButton = findViewById(R.id.flipGravityButton);
+        Button flipGravityButton = findViewById(R.id.flipGravityButton);
 
         flipGravityButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -54,8 +54,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void hideSystemUI() {
-        // Modern API for Android 11+
-        getWindow().setDecorFitsSystemWindows(false);
+        // Use WindowCompat instead of the deprecated setDecorFitsSystemWindows
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         WindowInsetsController controller = getWindow().getInsetsController();
         if (controller != null) {
             controller.hide(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
